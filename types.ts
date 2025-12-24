@@ -14,10 +14,37 @@ export interface SaleRecord {
 export interface AggregatedData {
   totalRevenue: number;
   totalTransactions: number;
-  byCategory: { name: string; value: number }[];
+  byCategory: { name: string; value: number; quantity: number }[];
   byPayment: { name: string; value: number }[];
   byGender: { name: string; value: number }[];
   topProducts: { name: string; quantity: number; revenue: number }[];
+  dailySales: { date: string; amount: number }[];
+  hourlySales: { hour: string; amount: number; count: number }[];
+  dayOfWeekSales: { day: string; amount: number }[];
+  monthlySales: { month: string; amount: number; transactions: number }[];
+}
+
+export interface SectionInsight {
+  title: string;
+  content: string;
+  type: 'positive' | 'negative' | 'neutral';
+  impactScore: number;
+}
+
+export interface ForecastData {
+  nextWeekRevenue: number;
+  nextMonthRevenue: number;
+  growthRate: number;
+  predictedTopCategory: string;
+  confidenceScore: number;
+  trendData: { period: string; predicted: number }[];
+  sectionInsights: {
+    hourly: SectionInsight;
+    weekly: SectionInsight;
+    monthly: SectionInsight;
+    category: SectionInsight;
+    gender: SectionInsight;
+  };
 }
 
 export interface Recommendation {
@@ -26,6 +53,9 @@ export interface Recommendation {
   product: string;
   reason: string;
   priority: 'high' | 'medium' | 'low';
+  horizon: 'weekly' | 'monthly';
+  predictedGrowth?: string;
+  expectedImpact: string; // تحليل تأثير القرار (Impact Analysis)
 }
 
 export type ViewState = 'upload' | 'dashboard' | 'recommendations';

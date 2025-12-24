@@ -1,8 +1,8 @@
 
 import React, { useState, useMemo, useRef } from 'react';
-import { ViewState, SaleRecord, AggregatedData, Recommendation } from './types';
+import { ViewState, SaleRecord, AggregatedData, Recommendation, ForecastData } from './types';
 import { parseCSV, aggregateData } from './utils/csvParser';
-import { getAIRecommendations } from './services/geminiService';
+import { getAIAnalysis } from './services/geminiService';
 import Dashboard from './components/Dashboard';
 import Recommendations from './components/Recommendations';
 
@@ -10,6 +10,7 @@ const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('upload');
   const [data, setData] = useState<SaleRecord[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [forecast, setForecast] = useState<ForecastData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -22,7 +23,7 @@ const App: React.FC = () => {
     if (!file) return;
 
     if (!file.name.endsWith('.csv')) {
-      setError("يرجى اختيار ملف بتنسيق CSV فقط.");
+      setError("يا حبيبنا اختار ملف CSV بس.");
       return;
     }
 
@@ -36,11 +37,11 @@ const App: React.FC = () => {
           setData(records);
           setError(null);
         } else {
-          setError("لم يتم العثور على بيانات صالحة في الملف. يرجى التحقق من تنسيق CSV.");
+          setError("الملف ده ما فيهو بيانات واضحة. راجع التنسيق.");
           setFileName(null);
         }
       } catch (err) {
-        setError("حدث خطأ أثناء قراءة محتوى الملف.");
+        setError("حصل غلط وأنا بقرا في الملف.");
         setFileName(null);
       }
     };
@@ -52,11 +53,12 @@ const App: React.FC = () => {
     setIsLoading(true);
     setView('dashboard');
     try {
-      const aiRecs = await getAIRecommendations(stats);
-      setRecommendations(aiRecs);
+      const result = await getAIAnalysis(stats);
+      setRecommendations(result.recommendations);
+      setForecast(result.forecast);
     } catch (err) {
       console.error(err);
-      setError("تعذر الحصول على توصيات الذكاء الاصطناعي حالياً.");
+      setError("الخدمة هسي مشغولة، جرب بعد شوية.");
     } finally {
       setIsLoading(false);
     }
@@ -72,8 +74,8 @@ const App: React.FC = () => {
       <header className="bg-indigo-700 text-white p-4 shadow-lg sticky top-0 z-50">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-2 space-x-reverse">
-            <div className="bg-white text-indigo-700 p-2 rounded-lg font-bold text-xl">AI</div>
-            <h1 className="text-2xl font-bold tracking-tight">SuperAI</h1>
+            <div className="bg-white text-indigo-700 p-2 rounded-lg font-bold text-xl">دكان</div>
+            <h1 className="text-2xl font-bold tracking-tight">سوبر آي</h1>
           </div>
           {data.length > 0 && !isLoading && (
             <nav className="flex gap-2 md:gap-4">
@@ -81,23 +83,24 @@ const App: React.FC = () => {
                 onClick={() => setView('dashboard')}
                 className={`px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base transition ${view === 'dashboard' ? 'bg-white text-indigo-700 font-bold shadow-md' : 'hover:bg-indigo-600 text-indigo-100'}`}
               >
-                التحليلات
+                الحاصل شنو؟
               </button>
               <button 
                 onClick={() => setView('recommendations')}
                 className={`px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base transition ${view === 'recommendations' ? 'bg-white text-indigo-700 font-bold shadow-md' : 'hover:bg-indigo-600 text-indigo-100'}`}
               >
-                التوصيات
+                نصايحنا ليك
               </button>
               <button 
                 onClick={() => {
                   setData([]);
                   setFileName(null);
+                  setForecast(null);
                   setView('upload');
                 }}
                 className="px-3 py-1.5 md:px-4 md:py-2 rounded-full text-sm md:text-base bg-indigo-800 hover:bg-indigo-900 transition text-indigo-200"
               >
-                تغيير الملف
+                غير الملف
               </button>
             </nav>
           )}
@@ -115,9 +118,9 @@ const App: React.FC = () => {
                 </svg>
               </div>
               
-              <h2 className="text-3xl font-bold mb-4 text-gray-800">تحليل بيانات السوبرماركت</h2>
+              <h2 className="text-3xl font-bold mb-4 text-gray-800">شوف دكانك ماشي كيف</h2>
               <p className="text-gray-500 mb-8 leading-relaxed">
-                ارفع ملف مبيعاتك بتنسيق CSV للحصول على رؤى فورية وتوصيات ذكية لتحسين مخزونك وزيادة مبيعاتك.
+                ارفع لينا ملف المبيعات (CSV) وبنوريك الحاصل شنو والمتوقع يحصل في الأيام الجاية.
               </p>
               
               <div 
@@ -139,23 +142,19 @@ const App: React.FC = () => {
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      تم اختيار الملف: {fileName}
+                      الملف جاهز: {fileName}
                     </div>
-                    <button className="text-sm text-indigo-600 hover:underline">تغيير الملف</button>
                   </>
                 ) : (
                   <>
-                    <p className="text-indigo-600 font-bold group-hover:scale-105 transition-transform">اضغط هنا لرفع الملف</p>
-                    <p className="text-xs text-gray-400">يدعم ملفات CSV فقط</p>
+                    <p className="text-indigo-600 font-bold">دوس هنا عشان تختار الملف</p>
+                    <p className="text-xs text-gray-400">ملفات CSV بس</p>
                   </>
                 )}
               </div>
 
               {error && (
-                <div className="mt-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 text-sm flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
+                <div className="mt-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-200 text-sm">
                   {error}
                 </div>
               )}
@@ -165,28 +164,23 @@ const App: React.FC = () => {
                 onClick={processAnalysis}
                 className={`mt-10 w-full py-4 rounded-2xl font-bold text-lg transition shadow-xl ${data.length > 0 ? 'bg-indigo-600 text-white hover:bg-indigo-700 transform hover:-translate-y-1' : 'bg-gray-200 text-gray-400 cursor-not-allowed'}`}
               >
-                بدء التحليل الذكي
+                ابدأ التحليل هسي
               </button>
-              
-              <div className="mt-8 text-xs text-gray-400">
-                تأكد أن الملف يحتوي على أعمدة: الفئة، السعر، الكمية، الإجمالي، التاريخ، طريقة الدفع.
-              </div>
             </div>
           </div>
         )}
 
         {view === 'dashboard' && stats && (
-          <Dashboard stats={stats} />
+          <Dashboard stats={stats} forecast={forecast} isLoading={isLoading} />
         )}
 
         {view === 'recommendations' && (
-          <Recommendations recommendations={recommendations} isLoading={isLoading} />
+          <Recommendations recommendations={recommendations} isLoading={isLoading} stats={stats} />
         )}
       </main>
 
-      {/* Footer */}
       <footer className="bg-white border-t border-gray-100 text-gray-400 p-6 text-center text-sm">
-        <p>© 2024 نظام SuperAI - ذكاء اصطناعي لإدارة المبيعات</p>
+        <p>© 2024 نظام سوبر آي - مستشارك الذكي في الدكان</p>
       </footer>
     </div>
   );
